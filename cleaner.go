@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
@@ -12,17 +11,6 @@ import (
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/id"
 )
-
-type ReqDeleteRoom struct {
-	Purge bool `json:"purge"`
-}
-
-type RespDeleteRoom struct {
-	KickedUsers       []id.UserID    `json:"kicked_users"`
-	FailedToKickUsers []id.UserID    `json:"failed_to_kick_users"`
-	LocalAliases      []id.RoomAlias `json:"local_aliases"`
-	NewRoomID         id.RoomID      `json:"new_room_id,omitempty"`
-}
 
 type OKResponse struct {
 	Removed uint64 `json:"removed"`
@@ -33,21 +21,21 @@ type OKResponse struct {
 func cleanRooms(ctx context.Context, client *mautrix.Client) (*OKResponse, error) {
 	reqLog := ctx.Value(logContextKey).(log.Logger)
 	reqLog.Infoln(client.UserID, "requested a room cleanup")
-	rooms, err := client.JoinedRooms()
+	rooms, err := GetRoomList(ctx, client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get joined rooms: %w", err)
+		return nil, fmt.Errorf("failed to get room list: %w", err)
 	}
-	reqLog.Debugln("Found", len(rooms.JoinedRooms), "rooms")
+	reqLog.Debugln("Found", len(rooms), "rooms")
 
 	var resp OKResponse
 	var wg sync.WaitGroup
-	wg.Add(len(rooms.JoinedRooms))
+	wg.Add(len(rooms))
 	queue := make(chan id.RoomID)
 	for i := 1; i <= cfg.ThreadCount; i++ {
 		threadContext := context.WithValue(ctx, logContextKey, reqLog.Sub(fmt.Sprintf("Thread-%d", i)))
 		go cleanRoomsThread(threadContext, client, queue, &wg, &resp)
 	}
-	for _, roomID := range rooms.JoinedRooms {
+	for _, roomID := range rooms {
 		select {
 		case queue <- roomID:
 		case <-ctx.Done():
@@ -101,21 +89,16 @@ func cleanRoom(ctx context.Context, client *mautrix.Client, roomID id.RoomID) (a
 		}
 	}()
 
-	if permissionErr := IsAllowedToCleanRoom(client, roomID); permissionErr != nil {
+	if permissionErr := IsAllowedToCleanRoom(ctx, client, roomID); permissionErr != nil {
 		reqLog.Debugfln("Skipping room %s as cleaning is not allowed: %v", roomID, permissionErr)
 		return
 	}
 	allowed = true
 
 	reqLog.Debugfln("Requesting admin API to clean up room %s for %s", roomID, client.UserID)
-	url := adminClient.BuildBaseURL("_synapse", "admin", "v1", "rooms", roomID)
-	var resp RespDeleteRoom
-	_, err = adminClient.MakeFullRequest(mautrix.FullRequest{
-		Method:       http.MethodDelete,
-		URL:          url,
-		RequestJSON:  &ReqDeleteRoom{Purge: true},
-		ResponseJSON: &resp,
-		Context:      ctx,
+	_, err = adminDeleteRoom(ctx, &ReqDeleteRoom{
+		RoomID: roomID,
+		Purge:  true,
 	})
 	if err != nil {
 		err = fmt.Errorf("failed to request room deletion: %w", err)

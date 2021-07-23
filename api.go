@@ -67,7 +67,7 @@ func handleCleanRooms(w http.ResponseWriter, r *http.Request) {
 	} else if err != nil {
 		reqLog.Warnln("Unknown error checking whoami:", err)
 		errTokenCheckFail.Write(w)
-	} else if err = IsAllowedToUseService(client, whoami); err != nil {
+	} else if err = IsAllowedToUseService(ctx, client, whoami); err != nil {
 		reqLog.Debugfln("%s asked to clean rooms, but the rules rejected it: %v", client.UserID, err)
 		errCleanForbidden.Write(w)
 	} else if resp, err = cleanRooms(ctx, client); err != nil {

@@ -12,6 +12,7 @@ type Config struct {
 	ListenAddress      string
 	SynapseURL         string
 	AsmuxURL           string
+	AsmuxDatabaseURL string
 	AdminAccessToken   string
 	ThreadCount        int
 	TrustForwardHeader bool
@@ -28,6 +29,7 @@ func readEnv() {
 	cfg.ListenAddress = os.Getenv("LISTEN_ADDRESS")
 	cfg.SynapseURL = os.Getenv("SYNAPSE_URL")
 	cfg.AsmuxURL = os.Getenv("ASMUX_URL")
+	cfg.AsmuxDatabaseURL = os.Getenv("ASMUX_DATABASE_URL")
 	if len(cfg.AsmuxURL) == 0 {
 		cfg.AsmuxURL = cfg.SynapseURL
 	}
@@ -36,6 +38,7 @@ func readEnv() {
 	if isTruthy(os.Getenv("DEBUG")) {
 		log.DefaultLogger.PrintLevel = log.LevelDebug.Severity
 	}
+	log.DefaultLogger.TimeFormat = "Jan _2, 2006 15:04:05"
 	threadCountStr := os.Getenv("THREAD_COUNT")
 	if len(threadCountStr) == 0 {
 		threadCountStr = "5"
