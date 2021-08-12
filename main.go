@@ -67,6 +67,18 @@ func main() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
 
+	ctrlCCounter := 0
+	go func() {
+		for {
+			<-c
+			ctrlCCounter++
+			if ctrlCCounter >= 3 {
+				log.Fatalln("Received", ctrlCCounter, "interrupts, force quitting...")
+				os.Exit(10)
+			}
+		}
+	}()
+
 	stopLoop()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
