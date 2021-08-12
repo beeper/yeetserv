@@ -14,9 +14,6 @@ import (
 	"maunium.net/go/mautrix/id"
 )
 
-// QueueSleep specifies how long to sleep between room deletions.
-const QueueSleep = 1 * time.Minute
-
 var queueLog = log.Sub("Queue")
 var imq chan id.RoomID
 var rds *redis.Client
@@ -60,7 +57,7 @@ func loopQueue(ctx context.Context, wg *sync.WaitGroup) {
 	for {
 		consumeQueue(ctx)
 		select {
-		case <-time.After(QueueSleep):
+		case <-time.After(cfg.QueueSleep):
 		case <-ctx.Done():
 			return
 		}

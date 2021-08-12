@@ -13,6 +13,7 @@ A microservice to delete all rooms of a bridge that was shut down.
   room list from. Defaults to using `/joined_rooms` if not set.
 * `REDIS_URL` - The URL to a redis database to persist the room deletion queue.
   Defaults to not persisting the queue if not set.
+* `QUEUE_SLEEP` - How long to sleep between deleting rooms in seconds.
 * `THREAD_COUNT` - Number of rooms to process simultaneously within each yeet
   request. Defaults to 5.
 * `DRY_RUN` - If true, rooms won't actually be affected.

@@ -4,6 +4,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	log "maunium.net/go/maulogger/v2"
 )
@@ -15,6 +16,7 @@ type Config struct {
 	AsmuxDatabaseURL   string
 	AdminAccessToken   string
 	ThreadCount        int
+	QueueSleep time.Duration
 	TrustForwardHeader bool
 	DryRun             bool
 	RedisURL           string
@@ -43,11 +45,20 @@ func readEnv() {
 		log.DefaultLogger.PrintLevel = log.LevelDebug.Severity
 	}
 	log.DefaultLogger.TimeFormat = "Jan _2, 2006 15:04:05"
+	queueSleepSecondsStr := os.Getenv("QUEUE_SLEEP_SECONDS")
+	if len(queueSleepSecondsStr) == 0 {
+		queueSleepSecondsStr = "60"
+	}
+	queueSleepSecondsInt, err := strconv.Atoi(queueSleepSecondsStr)
+	if err != nil {
+		log.Fatalln("QUEUE_SLEEP_SECONDS environment variable is not an integer")
+		os.Exit(2)
+	}
+	cfg.QueueSleep = time.Duration(queueSleepSecondsInt) * time.Second
 	threadCountStr := os.Getenv("THREAD_COUNT")
 	if len(threadCountStr) == 0 {
 		threadCountStr = "5"
 	}
-	var err error
 	cfg.ThreadCount, err = strconv.Atoi(threadCountStr)
 	if err != nil {
 		log.Fatalln("THREAD_COUNT environment variable is not an integer")
