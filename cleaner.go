@@ -85,7 +85,7 @@ func cleanRoom(ctx context.Context, client *mautrix.Client, roomID id.RoomID) (a
 	defer func() {
 		panicErr := recover()
 		if panicErr != nil {
-			err = fmt.Errorf("panic while cleaning %s for %s: %v\n%s", roomID, client.UserID, err, debug.Stack())
+			err = fmt.Errorf("panic while cleaning %s for %s: %v\n%s", roomID, client.UserID, panicErr, debug.Stack())
 		}
 	}()
 

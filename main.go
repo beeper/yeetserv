@@ -50,6 +50,8 @@ func main() {
 		err := server.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
 			log.Fatalln("Error in listener:", err)
+		} else {
+			log.Infoln("HTTP server closed")
 		}
 		wg.Done()
 	}()

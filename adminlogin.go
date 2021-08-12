@@ -27,7 +27,7 @@ const AdminLoginMinTimeLeft = 10 * time.Minute
 var sessionsLock sync.Mutex
 
 // sessions contains active user access tokens.
-var sessions map[id.UserID]*adminLoginSession
+var sessions = make(map[id.UserID]*adminLoginSession)
 
 func getAdminLoginSession(userID id.UserID) *adminLoginSession {
 	sessionsLock.Lock()

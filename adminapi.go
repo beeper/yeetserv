@@ -88,7 +88,7 @@ func adminLogin(ctx context.Context, req ReqAdminLogin) (*RespAdminLogin, error)
 	url := adminClient.BuildBaseURL("_synapse", "admin", "v1", "users", req.UserID, "login")
 	var resp RespAdminLogin
 	_, err := adminClient.MakeFullRequest(mautrix.FullRequest{
-		Method:       http.MethodDelete,
+		Method:       http.MethodPost,
 		URL:          url,
 		RequestJSON:  &req,
 		ResponseJSON: &resp,

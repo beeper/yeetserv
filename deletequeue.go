@@ -64,7 +64,7 @@ func loopQueue(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
-func markAsErrored(roomID id.RoomID) {
+func pushErrorQueue(roomID id.RoomID) {
 	if rds == nil {
 		return
 	}
@@ -75,20 +75,38 @@ func markAsErrored(roomID id.RoomID) {
 	}
 }
 
+func popDeleteQueue(ctx context.Context) (id.RoomID, bool) {
+	if rds != nil {
+		nextItem, err := rds.BLPop(ctx, 0, queueKey).Result()
+		if err != nil {
+			if !errors.Is(err, context.Canceled) {
+				queueLog.Errorln("Failed to get next item from redis:", err)
+			}
+			return "", false
+		}
+		return id.RoomID(nextItem[1]), true
+	} else {
+		select {
+		case roomID := <-imq:
+			return roomID, true
+		case <-ctx.Done():
+			return "", false
+		}
+	}
+}
+
 func consumeQueue(ctx context.Context) {
-	nextItem, err := rds.BLPop(ctx, 0, queueKey).Result()
-	if err != nil {
-		queueLog.Errorln("Failed to get next item from redis:", err)
+	roomID, ok := popDeleteQueue(ctx)
+	if !ok {
 		return
 	}
-	roomID := id.RoomID(nextItem[1])
 	if cfg.DryRun {
 		queueLog.Debugfln("Not requesting admin API to clean up room %s (dry run)", roomID)
 	} else {
 		queueLog.Debugfln("Requesting admin API to clean up room %s", roomID)
 	}
 	startTime := time.Now()
-	_, err = adminDeleteRoom(ctx, ReqDeleteRoom{RoomID: roomID, Purge: true})
+	_, err := adminDeleteRoom(ctx, ReqDeleteRoom{RoomID: roomID, Purge: true})
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			queueLog.Debugfln("Context was canceled while cleaning up %s, putting it back in the queue", roomID)
@@ -98,9 +116,9 @@ func consumeQueue(ctx context.Context) {
 			}
 		} else {
 			queueLog.Warnfln("Failed to clean up %s: %v", roomID, err)
-			go markAsErrored(roomID)
+			go pushErrorQueue(roomID)
 		}
-	} else if err == nil {
+	} else {
 		queueLog.Debugln("Room", roomID, "successfully cleaned up in", startTime.Sub(time.Now()))
 	}
 }
