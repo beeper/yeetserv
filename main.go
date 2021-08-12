@@ -39,7 +39,8 @@ func main() {
 	loopContext, stopLoop := context.WithCancel(context.Background())
 
 	router := mux.NewRouter()
-	router.HandleFunc("/_matrix/client/unstable/com.beeper.yeetserv/clean_rooms", handleCleanRooms).Methods(http.MethodPost)
+	router.HandleFunc("/_matrix/client/unstable/com.beeper.yeetserv/clean_all", handleCleanAllRooms).Methods(http.MethodPost)
+	router.HandleFunc("/_matrix/client/unstable/com.beeper.yeetserv/queue", handleQueue).Methods(http.MethodPost)
 	router.Handle("/metrics", promhttp.Handler())
 	server := &http.Server{
 		Addr:    cfg.ListenAddress,
