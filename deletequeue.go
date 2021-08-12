@@ -39,7 +39,7 @@ func initQueue() {
 
 func PushDeleteQueue(ctx context.Context, roomID id.RoomID) error {
 	if rds != nil {
-		err := rds.RPush(ctx, queueKey, roomID).Err()
+		err := rds.RPush(ctx, queueKey, roomID.String()).Err()
 		if err != nil {
 			return fmt.Errorf("failed to push %s to redis: %w", roomID, err)
 		}
@@ -119,6 +119,6 @@ func consumeQueue(ctx context.Context) {
 			go pushErrorQueue(roomID)
 		}
 	} else {
-		queueLog.Debugln("Room", roomID, "successfully cleaned up in", startTime.Sub(time.Now()))
+		queueLog.Debugln("Room", roomID, "successfully cleaned up in", time.Now().Sub(startTime))
 	}
 }

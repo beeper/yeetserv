@@ -45,16 +45,16 @@ func readEnv() {
 		log.DefaultLogger.PrintLevel = log.LevelDebug.Severity
 	}
 	log.DefaultLogger.TimeFormat = "Jan _2, 2006 15:04:05"
-	queueSleepSecondsStr := os.Getenv("QUEUE_SLEEP_SECONDS")
-	if len(queueSleepSecondsStr) == 0 {
-		queueSleepSecondsStr = "60"
+	queueSleepStr := os.Getenv("QUEUE_SLEEP")
+	if len(queueSleepStr) == 0 {
+		queueSleepStr = "60"
 	}
-	queueSleepSecondsInt, err := strconv.Atoi(queueSleepSecondsStr)
+	queueSleepInt, err := strconv.Atoi(queueSleepStr)
 	if err != nil {
-		log.Fatalln("QUEUE_SLEEP_SECONDS environment variable is not an integer")
+		log.Fatalln("QUEUE_SLEEP environment variable is not an integer")
 		os.Exit(2)
 	}
-	cfg.QueueSleep = time.Duration(queueSleepSecondsInt) * time.Second
+	cfg.QueueSleep = time.Duration(queueSleepInt) * time.Second
 	threadCountStr := os.Getenv("THREAD_COUNT")
 	if len(threadCountStr) == 0 {
 		threadCountStr = "5"
