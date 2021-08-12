@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"sync"
 	"time"
 
@@ -16,14 +15,6 @@ type adminLoginSession struct {
 	*mautrix.Client
 	sync.Mutex
 	ValidUntil time.Time
-}
-
-type ReqAdminLogin struct {
-	ValidUntilMS int64 `json:"valid_until_ms"`
-}
-
-type RespAdminLogin struct {
-	AccessToken string `json:"access_token"`
 }
 
 // AdminLoginLifetime specifies how long user access tokens created through the admin API should be valid.
@@ -67,14 +58,9 @@ func AdminLogin(ctx context.Context, userID id.UserID) (client *mautrix.Client, 
 
 	validUntil := time.Now().Add(AdminLoginLifetime)
 	reqLog.Debugfln("Requesting admin API to create a new access token for %s (valid until %s)", userID, validUntil)
-	url := adminClient.BuildBaseURL("_synapse", "admin", "v1", "users", userID, "login")
-	var resp RespAdminLogin
-	_, err = adminClient.MakeFullRequest(mautrix.FullRequest{
-		Method:       http.MethodDelete,
-		URL:          url,
-		RequestJSON:  &ReqAdminLogin{ValidUntilMS: validUntil.Unix() * 1000},
-		ResponseJSON: &resp,
-		Context:      ctx,
+	resp, err := adminLogin(ctx, ReqAdminLogin{
+		UserID:       userID,
+		ValidUntilMS: validUntil.Unix() * 1000,
 	})
 	if err != nil {
 		err = fmt.Errorf("failed to request user access token: %w", err)

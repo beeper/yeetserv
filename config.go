@@ -12,10 +12,12 @@ type Config struct {
 	ListenAddress      string
 	SynapseURL         string
 	AsmuxURL           string
-	AsmuxDatabaseURL string
+	AsmuxDatabaseURL   string
 	AdminAccessToken   string
 	ThreadCount        int
 	TrustForwardHeader bool
+	DryRun             bool
+	RedisURL           string
 }
 
 var cfg Config
@@ -35,6 +37,8 @@ func readEnv() {
 	}
 	cfg.AdminAccessToken = os.Getenv("ADMIN_ACCESS_TOKEN")
 	cfg.TrustForwardHeader = isTruthy(os.Getenv("TRUST_FORWARD_HEADERS"))
+	cfg.DryRun = isTruthy(os.Getenv("DRY_RUN"))
+	cfg.RedisURL = os.Getenv("REDIS_URL")
 	if isTruthy(os.Getenv("DEBUG")) {
 		log.DefaultLogger.PrintLevel = log.LevelDebug.Severity
 	}

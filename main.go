@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -24,11 +25,18 @@ func makeAdminClient() {
 		log.Fatalln("Failed to create admin client:", err)
 		os.Exit(3)
 	}
+	// We use contexts for admin request timeout
+	adminClient.Client.Timeout = 0
 }
 
 func main() {
 	readEnv()
 	makeAdminClient()
+	initQueue()
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	loopContext, stopLoop := context.WithCancel(context.Background())
 
 	router := mux.NewRouter()
 	router.HandleFunc("/_matrix/client/unstable/com.beeper.yeetserv/clean_rooms", handleCleanRooms).Methods(http.MethodPost)
@@ -43,16 +51,28 @@ func main() {
 		if err != nil && err != http.ErrServerClosed {
 			log.Fatalln("Error in listener:", err)
 		}
+		wg.Done()
 	}()
+	go loopQueue(loopContext, &wg)
+
+	if cfg.DryRun {
+		log.Infoln("Running in dry run mode")
+	} else {
+		log.Infoln("Running in destructive mode")
+	}
 
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
 
+	stopLoop()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	err := server.Shutdown(ctx)
 	if err != nil {
 		log.Errorln("Failed to close server:", err)
 	}
+	log.Infoln("Waiting for loop and server to exit")
+	wg.Wait()
+	log.Infoln("Everything shut down")
 }
