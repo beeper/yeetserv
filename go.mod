@@ -8,5 +8,5 @@ require (
 	github.com/jackc/pgx/v4 v4.13.0
 	github.com/prometheus/client_golang v1.11.0
 	maunium.net/go/maulogger/v2 v2.3.0
-	maunium.net/go/mautrix v0.9.17
+	maunium.net/go/mautrix v0.9.18-0.20210816120412-afe1e88793a6
 )

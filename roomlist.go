@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	log "maunium.net/go/maulogger/v2"
+
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/id"
 )

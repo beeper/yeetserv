@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -13,10 +14,12 @@ type Config struct {
 	ListenAddress      string
 	SynapseURL         string
 	AsmuxURL           string
+	AsmuxMainURL       *url.URL
 	AsmuxDatabaseURL   string
+	AsmuxAccessToken   string
 	AdminAccessToken   string
 	ThreadCount        int
-	QueueSleep time.Duration
+	QueueSleep         time.Duration
 	TrustForwardHeader bool
 	DryRun             bool
 	RedisURL           string
@@ -37,7 +40,16 @@ func readEnv() {
 	if len(cfg.AsmuxURL) == 0 {
 		cfg.AsmuxURL = cfg.SynapseURL
 	}
+	if _, isSet := os.LookupEnv("ASMUX_MAIN_URL"); isSet {
+		var err error
+		cfg.AsmuxMainURL, err = url.Parse(os.Getenv("ASMUX_MAIN_URL"))
+		if err != nil {
+			log.Fatalln("Failed to parse asmux main URL:", err)
+			os.Exit(2)
+		}
+	}
 	cfg.AdminAccessToken = os.Getenv("ADMIN_ACCESS_TOKEN")
+	cfg.AsmuxAccessToken = os.Getenv("ASMUX_ACCESS_TOKEN")
 	cfg.TrustForwardHeader = isTruthy(os.Getenv("TRUST_FORWARD_HEADERS"))
 	cfg.DryRun = isTruthy(os.Getenv("DRY_RUN"))
 	cfg.RedisURL = os.Getenv("REDIS_URL")

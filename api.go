@@ -146,6 +146,7 @@ func handleQueue(w http.ResponseWriter, r *http.Request) {
 				resp.Failed = append(resp.Failed, roomID)
 				reqLog.Warnfln("Failed to queue %s for deletion: %v", err)
 			} else {
+				reqLog.Debugln("Queued", roomID, "for deletion")
 				resp.Queued = append(resp.Queued, roomID)
 			}
 		}

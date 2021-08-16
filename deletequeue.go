@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	log "maunium.net/go/maulogger/v2"
+
 	"maunium.net/go/mautrix/id"
 )
 
@@ -22,6 +23,7 @@ const errorQueueKey = "yeetserv:error_queue"
 
 func initQueue() {
 	if len(cfg.RedisURL) > 0 {
+		log.Debugln("Initializing redis client")
 		redisURL, err := url.Parse(cfg.RedisURL)
 		if err != nil {
 			log.Fatalln("Bad redis URL:", err)
@@ -69,7 +71,7 @@ func pushErrorQueue(roomID id.RoomID) {
 		return
 	}
 	queueLog.Debugln("Marking", roomID, "as errored in redis")
-	err := rds.RPush(context.Background(), errorQueueKey, roomID).Err()
+	err := rds.RPush(context.Background(), errorQueueKey, roomID.String()).Err()
 	if err != nil {
 		queueLog.Errorln("Failed to mark %s as errored in redis: %v", roomID, err)
 	}
@@ -106,6 +108,13 @@ func consumeQueue(ctx context.Context) {
 		queueLog.Debugfln("Requesting admin API to clean up room %s", roomID)
 	}
 	startTime := time.Now()
+	if len(cfg.AsmuxAccessToken) > 0 && cfg.AsmuxMainURL != nil {
+		queueLog.Debugln("Requesting asmux to forget about room", roomID)
+		err := asmuxDeleteRoom(ctx, roomID)
+		if err != nil {
+			queueLog.Warnfln("Failed to request asmux to forget about room %s: %v", roomID, err)
+		}
+	}
 	_, err := adminDeleteRoom(ctx, ReqDeleteRoom{RoomID: roomID, Purge: true})
 	if err != nil {
 		if errors.Is(err, context.Canceled) {

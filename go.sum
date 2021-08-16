@@ -368,5 +368,5 @@ honnef.co/go/tools v0.0.1-2019.2.3/go.mod h1:a3bituU0lyd329TUQxRnasdCoJDkEUEAqEt
 maunium.net/go/maulogger/v2 v2.2.4/go.mod h1:TYWy7wKwz/tIXTpsx8G3mZseIRiC5DoMxSZazOHy68A=
 maunium.net/go/maulogger/v2 v2.3.0 h1:TMCcO65fLk6+pJXo7sl38tzjzW0KBFgc6JWJMBJp4GE=
 maunium.net/go/maulogger/v2 v2.3.0/go.mod h1:TYWy7wKwz/tIXTpsx8G3mZseIRiC5DoMxSZazOHy68A=
-maunium.net/go/mautrix v0.9.17 h1:4rRAN11LPQGS0TOGEb4uppUzGet7nSwT9C0jHzSWmtg=
-maunium.net/go/mautrix v0.9.17/go.mod h1:7IzKfWvpQtN+W2Lzxc0rLvIxFM3ryKX6Ys3S/ZoWbg8=
+maunium.net/go/mautrix v0.9.18-0.20210816120412-afe1e88793a6 h1:L9LFfxjskIkFo/9SAEcXic2rFFvWAlU4VToSGd1wtbE=
+maunium.net/go/mautrix v0.9.18-0.20210816120412-afe1e88793a6/go.mod h1:7IzKfWvpQtN+W2Lzxc0rLvIxFM3ryKX6Ys3S/ZoWbg8=
