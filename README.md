@@ -9,8 +9,16 @@ A microservice to delete all rooms of a bridge that was shut down.
 * `ASMUX_URL` - The URL where the client-server API is available. Access tokens
   in yeet requests are checked against this server. Defaults to using the same
   value as `SYNAPSE_URL`.
+* `ASMUX_DATABASE_URL` - The URL to the asmux postgres database to get the
+  room list from. Defaults to using `/joined_rooms` if not set.
+* `ASMUX_MAIN_URL` - The URL where the asmux management API is available.
+* `ASMUX_ACCESS_TOKEN` - Access token for the asmux management API.
+* `REDIS_URL` - The URL to a redis database to persist the room deletion queue.
+  Defaults to not persisting the queue if not set.
+* `QUEUE_SLEEP` - How long to sleep between deleting rooms in seconds.
 * `THREAD_COUNT` - Number of rooms to process simultaneously within each yeet
   request. Defaults to 5.
+* `DRY_RUN` - If true, rooms won't actually be affected.
 
 ## API
 The only endpoint is `POST /_matrix/client/unstable/com.beeper.yeetserv/clean_rooms`.

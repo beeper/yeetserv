@@ -43,10 +43,12 @@ func parseBridgeName(userID id.UserID) (bridgeUserLocalpart, bridgeName, homeser
 }
 
 // IsAllowedToCleanRoom checks if the given client has sufficient permissions in the room to include it in the cleanup.
-func IsAllowedToCleanRoom(ctx context.Context, client *mautrix.Client, roomID id.RoomID) error {
+//
+// It returns the list of user IDs that should be kicked right away.
+func IsAllowedToCleanRoom(ctx context.Context, client *mautrix.Client, roomID id.RoomID) ([]id.UserID, error) {
 	bridgeUserLocalpart, bridgeName, homeserver, err := parseBridgeName(client.UserID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// The localpart prefix for ghost users managed by the bridge.
 	bridgeGhostPrefix := fmt.Sprintf("_%s_%s_", bridgeUserLocalpart, bridgeName)
@@ -54,19 +56,21 @@ func IsAllowedToCleanRoom(ctx context.Context, client *mautrix.Client, roomID id
 	var randomBridgeGhostInRoom id.UserID
 	members, err := adminListRoomMembers(ctx, roomID)
 	if err != nil {
-		return fmt.Errorf("failed to get members of %s: %w", roomID, err)
+		return nil, fmt.Errorf("failed to get members of %s: %w", roomID, err)
 	}
+	var usersToKick []id.UserID
 	// Make sure the room doesn't contain anyone except the user of the bridge, the bridge bot and bridge ghosts.
 	for _, member := range members {
 		memberLocalpart, memberHomeserver, _ := member.Parse()
 		if memberHomeserver != homeserver {
-			return fmt.Errorf("room contains member '%s' from other homeserver '%s' (expected '%s')", member, memberHomeserver, homeserver)
-		} else if memberLocalpart != bridgeUserLocalpart {
-			if strings.HasPrefix(memberLocalpart, bridgeGhostPrefix) {
-				randomBridgeGhostInRoom = member
-			} else {
-				return fmt.Errorf("room contains member '%s' that is not the bridge user nor a bridge ghost (expected '%s' or prefix '%s')", member, bridgeUserLocalpart, bridgeGhostPrefix)
-			}
+			return nil, fmt.Errorf("room contains member '%s' from other homeserver '%s' (expected '%s')", member, memberHomeserver, homeserver)
+		} else if memberLocalpart == bridgeUserLocalpart {
+			// Found the bridge user, so schedule that user to be kicked from the room.
+			usersToKick = append(usersToKick, member)
+		} else if strings.HasPrefix(memberLocalpart, bridgeGhostPrefix) {
+			randomBridgeGhostInRoom = member
+		} else {
+			return nil, fmt.Errorf("room contains member '%s' that is not the bridge user nor a bridge ghost (expected '%s' or prefix '%s')", member, bridgeUserLocalpart, bridgeGhostPrefix)
 		}
 	}
 
@@ -87,7 +91,7 @@ func IsAllowedToCleanRoom(ctx context.Context, client *mautrix.Client, roomID id
 	var pl event.PowerLevelsEventContent
 	err = appserviceClient.StateEvent(roomID, event.StatePowerLevels, "", &pl)
 	if err != nil {
-		return fmt.Errorf("failed to get power levels of %s: %w", roomID, err)
+		return nil, fmt.Errorf("failed to get power levels of %s: %w", roomID, err)
 	}
 	// Make sure that the bridge bot or at least one bridged user has PL 100.
 	if pl.GetUserLevel(client.UserID) < 100 {
@@ -99,10 +103,10 @@ func IsAllowedToCleanRoom(ctx context.Context, client *mautrix.Client, roomID id
 			}
 		}
 		if !found {
-			return fmt.Errorf("room doesn't have any bridge user with admin power level")
+			return nil, fmt.Errorf("room doesn't have any bridge user with admin power level")
 		}
 	}
 
 	// All good, room is safe to delete.
-	return nil
+	return usersToKick, nil
 }

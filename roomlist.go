@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	log "maunium.net/go/maulogger/v2"
+
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/id"
 )
@@ -47,7 +48,7 @@ func getRoomsFromAsmuxDatabase(ctx context.Context, client *mautrix.Client) ([]i
 			reqLog.Warnln("Failed to close asmux database connection:", err)
 		}
 	}()
-	rows, err := conn.Query(ctx, "SELECT id FROM room WHERE owner=(SELECT id FROM appservice WHERE owner=$1 AND prefix=$2)", bridgeUserLocalpart, bridgeName)
+	rows, err := conn.Query(ctx, "SELECT id FROM room WHERE owner=(SELECT id FROM appservice WHERE owner=$1 AND prefix=$2 AND deleted=false)", bridgeUserLocalpart, bridgeName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query rooms in asmux database: %w", err)
 	}

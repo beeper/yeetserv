@@ -85,25 +85,30 @@ func cleanRoom(ctx context.Context, client *mautrix.Client, roomID id.RoomID) (a
 	defer func() {
 		panicErr := recover()
 		if panicErr != nil {
-			err = fmt.Errorf("panic while cleaning %s for %s: %v\n%s", roomID, client.UserID, err, debug.Stack())
+			err = fmt.Errorf("panic while cleaning %s for %s: %v\n%s", roomID, client.UserID, panicErr, debug.Stack())
 		}
 	}()
 
-	if permissionErr := IsAllowedToCleanRoom(ctx, client, roomID); permissionErr != nil {
+	usersToKick, permissionErr := IsAllowedToCleanRoom(ctx, client, roomID)
+	if permissionErr != nil {
 		reqLog.Debugfln("Skipping room %s as cleaning is not allowed: %v", roomID, permissionErr)
 		return
 	}
 	allowed = true
 
-	reqLog.Debugfln("Requesting admin API to clean up room %s for %s", roomID, client.UserID)
-	_, err = adminDeleteRoom(ctx, &ReqDeleteRoom{
-		RoomID: roomID,
-		Purge:  true,
-	})
-	if err != nil {
-		err = fmt.Errorf("failed to request room deletion: %w", err)
-	} else {
-		reqLog.Debugln("Room", roomID, "successfully cleaned up")
+	for _, userID := range usersToKick {
+		var userClient *mautrix.Client
+		if userClient, err = AdminLogin(ctx, userID); err != nil {
+			return
+		} else if cfg.DryRun {
+			reqLog.Debugfln("Not leaving %s as %s as we're in dry run mode", roomID, userID)
+		} else if _, err = userClient.LeaveRoom(roomID); err != nil {
+			err = fmt.Errorf("failed to leave room as %s: %w", userID, err)
+			return
+		} else {
+			reqLog.Debugfln("Successfully left %s as %s", roomID, userID)
+		}
 	}
+	err = PushDeleteQueue(ctx, roomID)
 	return
 }
