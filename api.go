@@ -139,12 +139,13 @@ func handleQueue(w http.ResponseWriter, r *http.Request) {
 	for _, roomID := range req.RoomIDs {
 		_, err = IsAllowedToCleanRoom(ctx, client, roomID)
 		if err != nil {
+			reqLog.Debugln("Rejecting queuing of %s for deletion: %v", roomID, err)
 			resp.Rejected = append(resp.Rejected, roomID)
 		} else {
 			err = PushDeleteQueue(ctx, roomID)
 			if err != nil {
 				resp.Failed = append(resp.Failed, roomID)
-				reqLog.Warnfln("Failed to queue %s for deletion: %v", err)
+				reqLog.Warnfln("Failed to queue %s for deletion: %v", roomID, err)
 			} else {
 				reqLog.Debugln("Queued", roomID, "for deletion")
 				resp.Queued = append(resp.Queued, roomID)
