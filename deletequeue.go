@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,8 +19,8 @@ import (
 var queueLog = log.Sub("Queue")
 var imq chan id.RoomID
 var rds *redis.Client
-const queueKey = "yeetserv:delete_queue"
-const errorQueueKey = "yeetserv:error_queue"
+var queueKey = "yeetserv:delete_queue"
+var errorQueueKey = "yeetserv:error_queue"
 
 func initQueue() {
 	if len(cfg.RedisURL) > 0 {
@@ -34,6 +35,12 @@ func initQueue() {
 		opts.Username = redisURL.User.Username()
 		opts.Password, _ = redisURL.User.Password()
 		rds = redis.NewClient(&opts)
+
+		if cfg.DryRun {
+			queueKey = strings.Replace(queueKey, ":", ":dry_run:", 1)
+			errorQueueKey = strings.Replace(errorQueueKey, ":", ":dry_run:", 1)
+		}
+		log.Debugln("Redis queue key:", queueKey)
 	} else {
 		imq = make(chan id.RoomID, 8192)
 	}
