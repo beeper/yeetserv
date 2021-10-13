@@ -68,6 +68,7 @@ func AdminLogin(ctx context.Context, userID id.UserID) (client *mautrix.Client, 
 		err = fmt.Errorf("failed to create mautrix client: %w", err)
 	} else {
 		sess.Client = client
+		sess.ValidUntil = validUntil
 	}
 	return
 }
