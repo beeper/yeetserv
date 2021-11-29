@@ -75,8 +75,8 @@ func adminListRoomMembers(ctx context.Context, roomID id.RoomID) ([]id.UserID, e
 }
 
 type ReqAdminLogin struct {
-	ValidUntilMS int64 `json:"valid_until_ms"`
-	UserID id.UserID `json:"-"`
+	ValidUntilMS int64     `json:"valid_until_ms"`
+	UserID       id.UserID `json:"-"`
 }
 
 type RespAdminLogin struct {
