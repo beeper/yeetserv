@@ -96,19 +96,23 @@ func cleanRoom(ctx context.Context, client *mautrix.Client, roomID id.RoomID) (a
 	}
 	allowed = true
 
+	leaveRoom(ctx, roomID, usersToKick)
+	err = PushDeleteQueue(ctx, roomID)
+	return
+}
+
+func leaveRoom(ctx context.Context, roomID id.RoomID, usersToKick []id.UserID) {
+	reqLog := ctx.Value(logContextKey).(log.Logger)
+
 	for _, userID := range usersToKick {
-		var userClient *mautrix.Client
-		if userClient, err = AdminLogin(ctx, userID); err != nil {
-			return
+		if userClient, err := AdminLogin(ctx, userID); err != nil {
+			reqLog.Warnfln("Failed to log in as %s to leave %s: %v", userID, roomID, err)
 		} else if cfg.DryRun {
 			reqLog.Debugfln("Not leaving %s as %s as we're in dry run mode", roomID, userID)
 		} else if _, err = userClient.LeaveRoom(roomID); err != nil {
-			err = fmt.Errorf("failed to leave room as %s: %w", userID, err)
-			return
+			reqLog.Warnfln("Failed to leave %s as %s: %w", roomID, userID, err)
 		} else {
 			reqLog.Debugfln("Successfully left %s as %s", roomID, userID)
 		}
 	}
-	err = PushDeleteQueue(ctx, roomID)
-	return
 }

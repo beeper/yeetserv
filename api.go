@@ -21,8 +21,8 @@ var logContextKey = "com.beeper.maulogger"
 var (
 	errNotJSON = appservice.Error{
 		HTTPStatus: http.StatusNotAcceptable,
-		ErrorCode: appservice.ErrNotJSON,
-		Message: "Request body is not JSON",
+		ErrorCode:  appservice.ErrNotJSON,
+		Message:    "Request body is not JSON",
 	}
 	errBadJSON = appservice.Error{
 		HTTPStatus: http.StatusBadRequest,
@@ -108,7 +108,8 @@ func handleCleanAllRooms(w http.ResponseWriter, r *http.Request) {
 }
 
 type ReqQueueRooms struct {
-	RoomIDs []id.RoomID `json:"room_ids"`
+	RoomIDs   []id.RoomID `json:"room_ids"`
+	LeaveRoom bool        `json:"leave_room"`
 }
 
 type RespQueueRooms struct {
@@ -137,11 +138,15 @@ func handleQueue(w http.ResponseWriter, r *http.Request) {
 
 	var resp RespQueueRooms
 	for _, roomID := range req.RoomIDs {
-		_, err = IsAllowedToCleanRoom(ctx, client, roomID)
+		usersToKick, err := IsAllowedToCleanRoom(ctx, client, roomID)
 		if err != nil {
 			reqLog.Debugln("Rejecting queuing of %s for deletion: %v", roomID, err)
 			resp.Rejected = append(resp.Rejected, roomID)
 		} else {
+			if req.LeaveRoom {
+				leaveRoom(ctx, roomID, usersToKick)
+			}
+
 			err = PushDeleteQueue(ctx, roomID)
 			if err != nil {
 				resp.Failed = append(resp.Failed, roomID)
