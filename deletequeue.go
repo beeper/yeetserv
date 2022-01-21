@@ -44,8 +44,9 @@ var promDeleteCounter = promauto.NewCounter(
 )
 var promDeleteSeconds = promauto.NewHistogram(
 	prometheus.HistogramOpts{
-		Name: "yeetserv_delete_seconds",
-		Help: "Time taken to delete in seconds",
+		Name:    "yeetserv_delete_seconds",
+		Help:    "Time taken to delete in seconds",
+		Buckets: []float64{10, 30, 60, 300, 600, 1200, 3600},
 	},
 )
 
