@@ -26,6 +26,7 @@ var errorQueueKey = "yeetserv:error_queue"
 var promDeleteQueueGauge prometheus.Gauge
 var promErrorQueueGauge prometheus.Gauge
 var promDeleteCounter prometheus.Counter
+var promDeleteSeconds prometheus.Histogram
 
 func initProm() {
 	promDeleteQueueGauge = prometheus.NewGauge(
@@ -46,7 +47,13 @@ func initProm() {
 			Help: "Number of deletes performed",
 		},
 	)
-	prometheus.MustRegister(promDeleteQueueGauge, promErrorQueueGauge, promDeleteCounter)
+	promDeleteSeconds = prometheus.NewHistogram(
+		prometheus.HistogramOpts{
+			Name: "yeetserv_delete_seconds",
+			Help: "Time taken to delete in seconds",
+		},
+	)
+	prometheus.MustRegister(promDeleteQueueGauge, promErrorQueueGauge, promDeleteCounter, promDeleteSeconds)
 }
 
 func initQueue() {
@@ -172,7 +179,9 @@ func consumeQueue(ctx context.Context) {
 			go pushErrorQueue(roomID)
 		}
 	} else {
-		queueLog.Debugln("Room", roomID, "successfully cleaned up in", time.Now().Sub(startTime))
+		deleteTime := time.Now().Sub(startTime)
+		queueLog.Debugln("Room", roomID, "successfully cleaned up in", deleteTime)
 		promDeleteCounter.Add(1)
+		promDeleteSeconds.Observe(deleteTime.Seconds())
 	}
 }
