@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/prometheus/client_golang/prometheus"
 	log "maunium.net/go/maulogger/v2"
 
 	"maunium.net/go/mautrix/id"
@@ -22,7 +23,34 @@ var rds *redis.Client
 var queueKey = "yeetserv:delete_queue"
 var errorQueueKey = "yeetserv:error_queue"
 
+var promDeleteQueueGauge prometheus.Gauge
+var promErrorQueueGauge prometheus.Gauge
+var promDeleteCounter prometheus.Counter
+
+func initProm() {
+	promDeleteQueueGauge = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "yeetserv_delete_queue_length",
+			Help: "Current length of yeetserv's delete queue",
+		},
+	)
+	promErrorQueueGauge = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "yeetserv_error_queue_length",
+			Help: "Current length of yeetserv's error queue",
+		},
+	)
+	promDeleteCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "yeetserv_delete_count",
+			Help: "Number of deletes performed",
+		},
+	)
+	prometheus.MustRegister(promDeleteQueueGauge, promErrorQueueGauge, promDeleteCounter)
+}
+
 func initQueue() {
+	initProm()
 	if len(cfg.RedisURL) > 0 {
 		log.Debugln("Initializing redis client")
 		redisURL, err := url.Parse(cfg.RedisURL)
@@ -52,8 +80,11 @@ func PushDeleteQueue(ctx context.Context, roomID id.RoomID) error {
 		if err != nil {
 			return fmt.Errorf("failed to push %s to redis: %w", roomID, err)
 		}
+		queueLog.Infoln("setting delete gauge to %f", float64(rds.LLen(ctx, queueKey).Val()))
+		promDeleteQueueGauge.Set(float64(rds.LLen(ctx, queueKey).Val()))
 	} else {
 		imq <- roomID
+		promDeleteQueueGauge.Set(float64(len(imq)))
 	}
 	return nil
 }
@@ -78,10 +109,13 @@ func pushErrorQueue(roomID id.RoomID) {
 		return
 	}
 	queueLog.Debugln("Marking", roomID, "as errored in redis")
-	err := rds.RPush(context.Background(), errorQueueKey, roomID.String()).Err()
+	ctx := context.Background()
+	err := rds.RPush(ctx, errorQueueKey, roomID.String()).Err()
 	if err != nil {
 		queueLog.Errorln("Failed to mark %s as errored in redis: %v", roomID, err)
+		return
 	}
+	promErrorQueueGauge.Set(float64(rds.LLen(ctx, queueKey).Val()))
 }
 
 func popDeleteQueue(ctx context.Context) (id.RoomID, bool) {
@@ -93,12 +127,15 @@ func popDeleteQueue(ctx context.Context) (id.RoomID, bool) {
 			}
 			return "", false
 		}
+		promDeleteQueueGauge.Set(float64(rds.LLen(ctx, queueKey).Val()))
 		return id.RoomID(nextItem[1]), true
 	} else {
 		select {
 		case roomID := <-imq:
+			promDeleteQueueGauge.Set(float64(len(imq)))
 			return roomID, true
 		case <-ctx.Done():
+			promDeleteQueueGauge.Set(0)
 			return "", false
 		}
 	}
@@ -136,5 +173,6 @@ func consumeQueue(ctx context.Context) {
 		}
 	} else {
 		queueLog.Debugln("Room", roomID, "successfully cleaned up in", time.Now().Sub(startTime))
+		promDeleteCounter.Add(1)
 	}
 }
