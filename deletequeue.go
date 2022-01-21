@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "maunium.net/go/maulogger/v2"
 
 	"maunium.net/go/mautrix/id"
@@ -23,41 +24,32 @@ var rds *redis.Client
 var queueKey = "yeetserv:delete_queue"
 var errorQueueKey = "yeetserv:error_queue"
 
-var promDeleteQueueGauge prometheus.Gauge
-var promErrorQueueGauge prometheus.Gauge
-var promDeleteCounter prometheus.Counter
-var promDeleteSeconds prometheus.Histogram
-
-func initProm() {
-	promDeleteQueueGauge = prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Name: "yeetserv_delete_queue_length",
-			Help: "Current length of yeetserv's delete queue",
-		},
-	)
-	promErrorQueueGauge = prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Name: "yeetserv_error_queue_length",
-			Help: "Current length of yeetserv's error queue",
-		},
-	)
-	promDeleteCounter = prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Name: "yeetserv_delete_count",
-			Help: "Number of deletes performed",
-		},
-	)
-	promDeleteSeconds = prometheus.NewHistogram(
-		prometheus.HistogramOpts{
-			Name: "yeetserv_delete_seconds",
-			Help: "Time taken to delete in seconds",
-		},
-	)
-	prometheus.MustRegister(promDeleteQueueGauge, promErrorQueueGauge, promDeleteCounter, promDeleteSeconds)
-}
+var promDeleteQueueGauge = promauto.NewGauge(
+	prometheus.GaugeOpts{
+		Name: "yeetserv_delete_queue_length",
+		Help: "Current length of yeetserv's delete queue",
+	},
+)
+var promErrorQueueGauge = promauto.NewGauge(
+	prometheus.GaugeOpts{
+		Name: "yeetserv_error_queue_length",
+		Help: "Current length of yeetserv's error queue",
+	},
+)
+var promDeleteCounter = promauto.NewCounter(
+	prometheus.CounterOpts{
+		Name: "yeetserv_delete_count",
+		Help: "Number of deletes performed",
+	},
+)
+var promDeleteSeconds = promauto.NewHistogram(
+	prometheus.HistogramOpts{
+		Name: "yeetserv_delete_seconds",
+		Help: "Time taken to delete in seconds",
+	},
+)
 
 func initQueue() {
-	initProm()
 	if len(cfg.RedisURL) > 0 {
 		log.Debugln("Initializing redis client")
 		redisURL, err := url.Parse(cfg.RedisURL)
