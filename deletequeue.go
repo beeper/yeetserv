@@ -80,7 +80,6 @@ func PushDeleteQueue(ctx context.Context, roomID id.RoomID) error {
 		if err != nil {
 			return fmt.Errorf("failed to push %s to redis: %w", roomID, err)
 		}
-		queueLog.Infoln("setting delete gauge to %f", float64(rds.LLen(ctx, queueKey).Val()))
 		promDeleteQueueGauge.Set(float64(rds.LLen(ctx, queueKey).Val()))
 	} else {
 		imq <- roomID
