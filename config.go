@@ -8,6 +8,7 @@ import (
 	"time"
 
 	log "maunium.net/go/maulogger/v2"
+	"maunium.net/go/mautrix/id"
 )
 
 type Config struct {
@@ -18,6 +19,8 @@ type Config struct {
 	AsmuxDatabaseURL   string
 	AsmuxAccessToken   string
 	AdminAccessToken   string
+	AdminUsername      id.UserID
+	AdminPassword      string
 	ThreadCount        int
 	QueueSleep         time.Duration
 	TrustForwardHeader bool
@@ -50,6 +53,8 @@ func readEnv() {
 		}
 	}
 	cfg.AdminAccessToken = os.Getenv("ADMIN_ACCESS_TOKEN")
+	cfg.AdminUsername = id.UserID(os.Getenv("ADMIN_USERNAME"))
+	cfg.AdminPassword = os.Getenv("ADMIN_PASSWORD")
 	cfg.AsmuxAccessToken = os.Getenv("ASMUX_ACCESS_TOKEN")
 	cfg.TrustForwardHeader = isTruthy(os.Getenv("TRUST_FORWARD_HEADERS"))
 	cfg.DryRun = isTruthy(os.Getenv("DRY_RUN"))
@@ -83,7 +88,11 @@ func readEnv() {
 	} else if len(cfg.SynapseURL) == 0 {
 		log.Fatalln("SYNAPSE_URL environment variable is not set")
 	} else if len(cfg.AdminAccessToken) == 0 {
-		log.Fatalln("ADMIN_ACCESS_TOKEN environment variable is not set")
+		if len(cfg.AdminUsername) == 0 && len(cfg.AdminPassword) == 0 {
+			log.Fatalln("ADMIN_ACCESS_TOKEN environment variable is not set and ADMIN_USERNAME+ADMIN_PASSWORD is not set")
+		} else {
+			return
+		}
 	} else {
 		return
 	}
