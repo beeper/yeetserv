@@ -96,6 +96,24 @@ func cleanRoom(ctx context.Context, client *mautrix.Client, roomID id.RoomID) (a
 	}
 	allowed = true
 
+	aliases, aliasesErr := client.GetAliases(roomID)
+	if aliasesErr != nil {
+		err = fmt.Errorf("failed to fetch room aliases while cleaning %s for %s: %v", roomID, client.UserID, aliasesErr)
+		return
+	}
+
+	for _, alias := range aliases.Aliases {
+		if cfg.DryRun {
+			reqLog.Debugfln("Not removing alias %s of %s as we're in dry run mode", alias, roomID)
+		} else {
+			if _, deleteErr := client.DeleteAlias(alias); deleteErr != nil {
+				err = fmt.Errorf("failed to remove alias %s of %s: %v", alias, roomID, deleteErr)
+				return
+			}
+			reqLog.Debugfln("Successfully removed alias %s of %s", alias, roomID)
+		}
+	}
+
 	leaveRoom(ctx, roomID, usersToKick)
 	err = PushDeleteQueue(ctx, roomID)
 	return

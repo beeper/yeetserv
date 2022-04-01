@@ -86,6 +86,7 @@ func IsAllowedToCleanRoom(ctx context.Context, client *mautrix.Client, roomID id
 		Client:        client.Client,
 		Prefix:        client.Prefix,
 		Store:         client.Store,
+		Logger:        client.Logger,
 	}
 
 	var pl event.PowerLevelsEventContent
