@@ -23,6 +23,7 @@ type Config struct {
 	TrustForwardHeader bool
 	DryRun             bool
 	RedisURL           string
+	PostponeDeletion   time.Duration
 }
 
 var cfg Config
@@ -67,6 +68,9 @@ func readEnv() {
 		os.Exit(2)
 	}
 	cfg.QueueSleep = time.Duration(queueSleepInt) * time.Second
+	if cfg.PostponeDeletion, err = time.ParseDuration(os.Getenv("POSTPONE_DELETION")); err != nil {
+		cfg.PostponeDeletion = time.Second * 0
+	}
 	threadCountStr := os.Getenv("THREAD_COUNT")
 	if len(threadCountStr) == 0 {
 		threadCountStr = "5"

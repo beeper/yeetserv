@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -17,6 +18,11 @@ import (
 
 	"maunium.net/go/mautrix/id"
 )
+
+type PendingRoom struct {
+	RoomID    id.RoomID `json:"roomID"`
+	QueueTime time.Time `json:"queueTime"`
+}
 
 var queueLog = log.Sub("Queue")
 var imq chan id.RoomID
@@ -76,7 +82,12 @@ func initQueue() {
 
 func PushDeleteQueue(ctx context.Context, roomID id.RoomID) error {
 	if rds != nil {
-		err := rds.RPush(ctx, queueKey, roomID.String()).Err()
+		pendingRoom := &PendingRoom{RoomID: roomID, QueueTime: time.Now()}
+		jsonData, err := json.Marshal(pendingRoom)
+		if err != nil {
+			return fmt.Errorf("failed to marshal %s to redis: %w", roomID, err)
+		}
+		err = rds.RPush(ctx, queueKey, jsonData).Err()
 		if err != nil {
 			return fmt.Errorf("failed to push %s to redis: %w", roomID, err)
 		}
@@ -119,14 +130,40 @@ func pushErrorQueue(roomID id.RoomID) {
 
 func popDeleteQueue(ctx context.Context) (id.RoomID, bool) {
 	if rds != nil {
-		nextItem, err := rds.BLPop(ctx, 0, queueKey).Result()
+		nextItem, err := rds.LRange(ctx, queueKey, 0, 0).Result()
+		if err != nil {
+			queueLog.Errorln("Failed to peek next item from redis:", err)
+			return "", false
+		}
+
+		if len(nextItem) == 0 {
+			return "", false
+		}
+
+		// we only check for due if we get valid json, otherwise it's a legacy plain room id
+		pendingRoom := &PendingRoom{}
+		if err := json.Unmarshal([]byte(nextItem[0]), pendingRoom); err == nil {
+			if time.Since(pendingRoom.QueueTime) < cfg.PostponeDeletion {
+				queueLog.Debugfln("Next item from delete queue is due on %v", pendingRoom.QueueTime.Add(cfg.PostponeDeletion))
+				return "", false
+			}
+		}
+
+		// really pop it now, we assume no one pushes to the head of the queue
+		nextItem, err = rds.BLPop(ctx, 0, queueKey).Result()
 		if err != nil {
 			if !errors.Is(err, context.Canceled) {
 				queueLog.Errorln("Failed to get next item from redis:", err)
 			}
 			return "", false
 		}
+
 		promDeleteQueueGauge.Set(float64(rds.LLen(ctx, queueKey).Val()))
+
+		if err := json.Unmarshal([]byte(nextItem[1]), pendingRoom); err == nil {
+			return pendingRoom.RoomID, true
+		}
+
 		return id.RoomID(nextItem[1]), true
 	} else {
 		select {

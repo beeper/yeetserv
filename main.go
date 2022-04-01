@@ -64,6 +64,8 @@ func main() {
 		log.Infoln("Running in destructive mode")
 	}
 
+	log.Infofln("Rooms will wait in the delete queue for %v", cfg.PostponeDeletion)
+
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
