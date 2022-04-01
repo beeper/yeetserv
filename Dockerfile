@@ -1,6 +1,6 @@
 FROM golang:1-alpine AS builder
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates git
 COPY . /build
 WORKDIR /build
 RUN CGO_ENABLED=0 go build -o /usr/bin/scheduleserv
