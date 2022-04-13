@@ -18,7 +18,37 @@ import (
 
 var adminClient *mautrix.Client
 
-func makeAdminClient() {
+func makeAdminClientFromCredentials() {
+	ghostClient, err := mautrix.NewClient(cfg.SynapseURL, "", "")
+	if err != nil {
+		log.Fatalln("Failed to create admin client:", err)
+		os.Exit(6)
+	}
+	resp, err := ghostClient.Login(&mautrix.ReqLogin{
+		Type: "m.login.password",
+		Identifier: mautrix.UserIdentifier{
+			Type: "m.id.user",
+			User: cfg.AdminUsername.String(),
+		},
+		Password:                 cfg.AdminPassword,
+		DeviceID:                 "yeetserv",
+		InitialDeviceDisplayName: "Yeetserv",
+	})
+	if err != nil {
+		log.Fatalln("Failed to obtain admin token")
+		os.Exit(7)
+	}
+	adminClient, err = mautrix.NewClient(cfg.SynapseURL, "", resp.AccessToken)
+	if err != nil {
+		log.Fatalln("Failed to create admin client:", err)
+		os.Exit(3)
+	}
+	log.Infoln("Obtained an admin access token using provided credentials")
+	// We use contexts for admin request timeout
+	adminClient.Client.Timeout = 0
+}
+
+func makeAdminClientFromAdminAccessToken() {
 	var err error
 	adminClient, err = mautrix.NewClient(cfg.SynapseURL, "", cfg.AdminAccessToken)
 	if err != nil {
@@ -31,7 +61,11 @@ func makeAdminClient() {
 
 func main() {
 	readEnv()
-	makeAdminClient()
+	if len(cfg.AdminAccessToken) == 0 {
+		makeAdminClientFromCredentials()
+	} else {
+		makeAdminClientFromAdminAccessToken()
+	}
 	initQueue()
 
 	var wg sync.WaitGroup
