@@ -18,42 +18,31 @@ import (
 
 var adminClient *mautrix.Client
 
-func makeAdminClientFromCredentials() {
-	ghostClient, err := mautrix.NewClient(cfg.SynapseURL, "", "")
-	if err != nil {
-		log.Fatalln("Failed to create admin client:", err)
-		os.Exit(6)
-	}
-	resp, err := ghostClient.Login(&mautrix.ReqLogin{
-		Type: "m.login.password",
-		Identifier: mautrix.UserIdentifier{
-			Type: "m.id.user",
-			User: cfg.AdminUsername.String(),
-		},
-		Password:                 cfg.AdminPassword,
-		DeviceID:                 "yeetserv",
-		InitialDeviceDisplayName: "Yeetserv",
-	})
-	if err != nil {
-		log.Fatalln("Failed to obtain admin token")
-		os.Exit(7)
-	}
-	adminClient, err = mautrix.NewClient(cfg.SynapseURL, "", resp.AccessToken)
-	if err != nil {
-		log.Fatalln("Failed to create admin client:", err)
-		os.Exit(3)
-	}
-	log.Infoln("Obtained an admin access token using provided credentials")
-	// We use contexts for admin request timeout
-	adminClient.Client.Timeout = 0
-}
-
-func makeAdminClientFromAdminAccessToken() {
+func makeAdminClient() {
 	var err error
 	adminClient, err = mautrix.NewClient(cfg.SynapseURL, "", cfg.AdminAccessToken)
 	if err != nil {
 		log.Fatalln("Failed to create admin client:", err)
 		os.Exit(3)
+	}
+	if len(cfg.AdminAccessToken) == 0 {
+		_, err = adminClient.Login(&mautrix.ReqLogin{
+			Type: mautrix.AuthTypePassword,
+			Identifier: mautrix.UserIdentifier{
+				Type: mautrix.IdentifierTypeUser,
+				User: cfg.AdminUsername,
+			},
+			Password:                 cfg.AdminPassword,
+			DeviceID:                 "yeetserv",
+			InitialDeviceDisplayName: "yeetserv",
+
+			StoreCredentials: true,
+		})
+		if err != nil {
+			log.Fatalln("Failed to obtain admin token:", err)
+			os.Exit(5)
+		}
+		log.Infofln("Obtained an admin access token (for %s) token using provided credentials", adminClient.UserID)
 	}
 	// We use contexts for admin request timeout
 	adminClient.Client.Timeout = 0
@@ -61,11 +50,7 @@ func makeAdminClientFromAdminAccessToken() {
 
 func main() {
 	readEnv()
-	if len(cfg.AdminAccessToken) == 0 {
-		makeAdminClientFromCredentials()
-	} else {
-		makeAdminClientFromAdminAccessToken()
-	}
+	makeAdminClient()
 	initQueue()
 
 	var wg sync.WaitGroup

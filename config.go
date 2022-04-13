@@ -8,7 +8,6 @@ import (
 	"time"
 
 	log "maunium.net/go/maulogger/v2"
-	"maunium.net/go/mautrix/id"
 )
 
 type Config struct {
@@ -19,7 +18,7 @@ type Config struct {
 	AsmuxDatabaseURL   string
 	AsmuxAccessToken   string
 	AdminAccessToken   string
-	AdminUsername      id.UserID
+	AdminUsername      string
 	AdminPassword      string
 	ThreadCount        int
 	QueueSleep         time.Duration
@@ -53,7 +52,7 @@ func readEnv() {
 		}
 	}
 	cfg.AdminAccessToken = os.Getenv("ADMIN_ACCESS_TOKEN")
-	cfg.AdminUsername = id.UserID(os.Getenv("ADMIN_USERNAME"))
+	cfg.AdminUsername = os.Getenv("ADMIN_USERNAME")
 	cfg.AdminPassword = os.Getenv("ADMIN_PASSWORD")
 	cfg.AsmuxAccessToken = os.Getenv("ASMUX_ACCESS_TOKEN")
 	cfg.TrustForwardHeader = isTruthy(os.Getenv("TRUST_FORWARD_HEADERS"))
