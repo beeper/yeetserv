@@ -17,6 +17,7 @@ import (
 )
 
 var adminClient *mautrix.Client
+var asmuxClient *mautrix.Client
 
 func makeAdminClient() {
 	var err error
@@ -48,13 +49,23 @@ func makeAdminClient() {
 	adminClient.Client.Timeout = 0
 }
 
+func makeAsmuxClient() {
+	var err error
+	asmuxClient, err = mautrix.NewClient(cfg.SynapseURL, "", cfg.AsmuxASToken)
+	if err != nil {
+		log.Fatalln("Failed to create asmux client:", err)
+		os.Exit(3)
+	}
+}
+
 func main() {
 	readEnv()
 	makeAdminClient()
+	makeAsmuxClient()
 	initQueue()
 
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3)
 	loopContext, stopLoop := context.WithCancel(context.Background())
 
 	router := mux.NewRouter()
@@ -75,7 +86,8 @@ func main() {
 		}
 		wg.Done()
 	}()
-	go loopQueue(loopContext, &wg)
+	go loopLeaveQueue(loopContext, &wg)
+	go loopDeleteQueue(loopContext, &wg)
 
 	if cfg.DryRun {
 		log.Infoln("Running in dry run mode")

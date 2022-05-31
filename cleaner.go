@@ -96,41 +96,10 @@ func cleanRoom(ctx context.Context, client *mautrix.Client, roomID id.RoomID) (a
 	}
 	allowed = true
 
-	aliases, aliasesErr := client.GetAliases(roomID)
-	if aliasesErr != nil {
-		err = fmt.Errorf("failed to fetch room aliases while cleaning %s for %s: %v", roomID, client.UserID, aliasesErr)
-		return
+	err = PushLeaveQueue(ctx, roomID, usersToKick)
+	if err == nil {
+		reqLog.Debugfln("Room %s queued for leaving", roomID)
 	}
 
-	for _, alias := range aliases.Aliases {
-		if cfg.DryRun {
-			reqLog.Debugfln("Not removing alias %s of %s as we're in dry run mode", alias, roomID)
-		} else {
-			if _, deleteErr := client.DeleteAlias(alias); deleteErr != nil {
-				err = fmt.Errorf("failed to remove alias %s of %s: %v", alias, roomID, deleteErr)
-				return
-			}
-			reqLog.Debugfln("Successfully removed alias %s of %s", alias, roomID)
-		}
-	}
-
-	leaveRoom(ctx, roomID, usersToKick)
-	err = PushDeleteQueue(ctx, roomID)
 	return
-}
-
-func leaveRoom(ctx context.Context, roomID id.RoomID, usersToKick []id.UserID) {
-	reqLog := ctx.Value(logContextKey).(log.Logger)
-
-	for _, userID := range usersToKick {
-		if userClient, err := AdminLogin(ctx, userID); err != nil {
-			reqLog.Warnfln("Failed to log in as %s to leave %s: %v", userID, roomID, err)
-		} else if cfg.DryRun {
-			reqLog.Debugfln("Not leaving %s as %s as we're in dry run mode", roomID, userID)
-		} else if _, err = userClient.LeaveRoom(roomID); err != nil {
-			reqLog.Warnfln("Failed to leave %s as %s: %w", roomID, userID, err)
-		} else {
-			reqLog.Debugfln("Successfully left %s as %s", roomID, userID)
-		}
-	}
 }

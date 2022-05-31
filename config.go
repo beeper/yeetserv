@@ -17,6 +17,7 @@ type Config struct {
 	AsmuxMainURL       *url.URL
 	AsmuxDatabaseURL   string
 	AsmuxAccessToken   string
+	AsmuxASToken       string
 	AdminAccessToken   string
 	AdminUsername      string
 	AdminPassword      string
@@ -55,6 +56,7 @@ func readEnv() {
 	cfg.AdminUsername = os.Getenv("ADMIN_USERNAME")
 	cfg.AdminPassword = os.Getenv("ADMIN_PASSWORD")
 	cfg.AsmuxAccessToken = os.Getenv("ASMUX_ACCESS_TOKEN")
+	cfg.AsmuxASToken = os.Getenv("ASMUX_AS_TOKEN")
 	cfg.TrustForwardHeader = isTruthy(os.Getenv("TRUST_FORWARD_HEADERS"))
 	cfg.DryRun = isTruthy(os.Getenv("DRY_RUN"))
 	cfg.RedisURL = os.Getenv("REDIS_URL")

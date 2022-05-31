@@ -144,15 +144,16 @@ func handleQueue(w http.ResponseWriter, r *http.Request) {
 			resp.Rejected = append(resp.Rejected, roomID)
 		} else {
 			if req.LeaveRoom {
-				leaveRoom(ctx, roomID, usersToKick)
+				err = PushLeaveQueue(ctx, roomID, usersToKick)
+			} else {
+				err = PushDeleteQueue(ctx, roomID)
 			}
 
-			err = PushDeleteQueue(ctx, roomID)
 			if err != nil {
 				resp.Failed = append(resp.Failed, roomID)
 				reqLog.Warnfln("Failed to queue %s for deletion: %v", roomID, err)
 			} else {
-				reqLog.Debugln("Queued", roomID, "for deletion")
+				reqLog.Debugln("Queued", roomID, "for deletion (leave: %v)", req.LeaveRoom)
 				resp.Queued = append(resp.Queued, roomID)
 			}
 		}
