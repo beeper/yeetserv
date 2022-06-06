@@ -197,7 +197,7 @@ func pushErrorQueue(roomID id.RoomID) {
 		queueLog.Errorln("Failed to mark %s as errored in redis: %v", roomID, err)
 		return
 	}
-	promErrorQueueGauge.Set(float64(rds.LLen(ctx, deleteQueueKey).Val()))
+	promErrorQueueGauge.Set(float64(rds.LLen(ctx, errorQueueKey).Val()))
 }
 
 func popLeaveQueue(ctx context.Context) (*LeavingRoom, bool) {
