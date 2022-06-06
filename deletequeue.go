@@ -303,7 +303,7 @@ func popDeleteQueue(ctx context.Context) (id.RoomID, bool) {
 			return "", false
 		}
 
-		// we only check for due if we get valid json, otherwise it's a legacy plain room id
+		// we only check for due if we get valid json, otherwise it's a legacy plain room id OR requeued error room ID
 		pendingRoom := &PendingRoom{}
 		if err := json.Unmarshal([]byte(nextItem[0]), pendingRoom); err == nil {
 			if time.Since(pendingRoom.QueueTime) < cfg.PostponeDeletion {
