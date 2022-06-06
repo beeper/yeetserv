@@ -102,17 +102,33 @@ func initQueue() {
 			errorQueueKey = strings.Replace(errorQueueKey, ":", ":dry_run:", 1)
 		}
 
-		var ctx = context.Background()
-		promLeaveQueueGauge.Set(float64(rds.LLen(ctx, leaveQueueKey).Val()))
-		promDeleteQueueGauge.Set(float64(rds.LLen(ctx, deleteQueueKey).Val()))
-		promErrorQueueGauge.Set(float64(rds.LLen(ctx, errorQueueKey).Val()))
-
 		log.Debugln("Redis leave queue key:", leaveQueueKey)
 		log.Debugln("Redis delete queue key:", deleteQueueKey)
 		log.Debugln("Redis error queue key:", errorQueueKey)
 	} else {
 		leaveQueue = make(chan *LeavingRoom, 8192)
 		deleteQueue = make(chan id.RoomID, 8192)
+	}
+}
+
+func loopQueueStats(ctx context.Context, wg *sync.WaitGroup) {
+	if rds == nil {
+		return
+	}
+
+	defer func() {
+		queueLog.Infoln("Queue stats updater exiting")
+		wg.Done()
+	}()
+	for {
+		promLeaveQueueGauge.Set(float64(rds.LLen(ctx, leaveQueueKey).Val()))
+		promDeleteQueueGauge.Set(float64(rds.LLen(ctx, deleteQueueKey).Val()))
+		promErrorQueueGauge.Set(float64(rds.LLen(ctx, errorQueueKey).Val()))
+		select {
+		case <-time.After(30 * time.Second):
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 
@@ -128,7 +144,6 @@ func PushLeaveQueue(ctx context.Context, roomID id.RoomID, usersToKick []id.User
 		if err != nil {
 			return fmt.Errorf("failed to push %s to redis: %w", roomID, err)
 		}
-		promLeaveQueueGauge.Set(float64(rds.LLen(ctx, leaveQueueKey).Val()))
 	} else {
 		leaveQueue <- leavingRoom
 		promLeaveQueueGauge.Set(float64(len(leaveQueue)))
@@ -147,7 +162,6 @@ func PushDeleteQueue(ctx context.Context, roomID id.RoomID) error {
 		if err != nil {
 			return fmt.Errorf("failed to push %s to redis: %w", roomID, err)
 		}
-		promDeleteQueueGauge.Set(float64(rds.LLen(ctx, deleteQueueKey).Val()))
 	} else {
 		deleteQueue <- roomID
 		promDeleteQueueGauge.Set(float64(len(deleteQueue)))
@@ -203,7 +217,6 @@ func pushErrorQueue(roomID id.RoomID) {
 		queueLog.Errorln("Failed to mark %s as errored in redis: %v", roomID, err)
 		return
 	}
-	promErrorQueueGauge.Set(float64(rds.LLen(ctx, errorQueueKey).Val()))
 }
 
 func popLeaveQueue(ctx context.Context) (*LeavingRoom, bool) {
@@ -221,8 +234,6 @@ func popLeaveQueue(ctx context.Context) (*LeavingRoom, bool) {
 			queueLog.Errorln("Failed to unmarshal next leave item from redis:", err)
 			return nil, false
 		}
-
-		promLeaveQueueGauge.Set(float64(rds.LLen(ctx, leaveQueueKey).Val()))
 
 		return leavingRoom, true
 	} else {
@@ -326,8 +337,6 @@ func popDeleteQueue(ctx context.Context) (id.RoomID, bool) {
 			}
 			return "", false
 		}
-
-		promDeleteQueueGauge.Set(float64(rds.LLen(ctx, deleteQueueKey).Val()))
 
 		if err := json.Unmarshal([]byte(nextItem[1]), pendingRoom); err == nil {
 			return pendingRoom.RoomID, true

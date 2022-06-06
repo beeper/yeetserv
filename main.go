@@ -88,6 +88,7 @@ func main() {
 	}()
 	go loopLeaveQueue(loopContext, &wg)
 	go loopDeleteQueue(loopContext, &wg)
+	go loopQueueStats(loopContext, &wg)
 
 	if cfg.DryRun {
 		log.Infoln("Running in dry run mode")
