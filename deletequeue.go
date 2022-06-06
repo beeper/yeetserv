@@ -102,9 +102,11 @@ func initQueue() {
 			errorQueueKey = strings.Replace(errorQueueKey, ":", ":dry_run:", 1)
 		}
 
+		var ctx = context.Background()
 		promLeaveQueueGauge.Set(float64(rds.LLen(ctx, leaveQueueKey).Val()))
 		promDeleteQueueGauge.Set(float64(rds.LLen(ctx, deleteQueueKey).Val()))
 		promErrorQueueGauge.Set(float64(rds.LLen(ctx, errorQueueKey).Val()))
+
 		log.Debugln("Redis leave queue key:", leaveQueueKey)
 		log.Debugln("Redis delete queue key:", deleteQueueKey)
 		log.Debugln("Redis error queue key:", errorQueueKey)
