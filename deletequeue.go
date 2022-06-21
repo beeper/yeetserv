@@ -363,7 +363,7 @@ func waitIfDeletePaused(ctx context.Context) {
 			return;
 		}
 		queueLog.Debugln("Waiting, deletes currently paused")
-		time.After(10)
+		time.Sleep(10 * time.Second)
 	}
 }
 
