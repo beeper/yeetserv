@@ -35,6 +35,7 @@ var deleteQueue chan id.RoomID
 var rds *redis.Client
 var leaveQueueKey = "yeetserv:leave_queue"
 var deleteQueueKey = "yeetserv:delete_queue"
+var pauseDeleteQueueKey = "yeetserv:pause_delete_queue"
 var errorQueueKey = "yeetserv:error_queue"
 
 var promLeaveQueueGauge = promauto.NewGauge(
@@ -355,7 +356,22 @@ func popDeleteQueue(ctx context.Context) (id.RoomID, bool) {
 	}
 }
 
+func waitIfDeletePaused(ctx context.Context) {
+	for {
+		paused, err := rds.Get(ctx, pauseDeleteQueueKey).Result()
+		if err != nil && paused == "" {
+			return;
+		}
+		queueLog.Debugln("Waiting, deletes currently paused")
+		time.After(10)
+	}
+}
+
 func consumeDeleteQueue(ctx context.Context) {
+	if rds != nil {
+		waitIfDeletePaused(ctx)
+	}
+
 	roomID, ok := popDeleteQueue(ctx)
 	if !ok {
 		return
