@@ -11,6 +11,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/jackc/pgx/v4/pgxpool"
+
 	log "maunium.net/go/maulogger/v2"
 
 	"maunium.net/go/mautrix"
@@ -18,6 +20,7 @@ import (
 
 var adminClient *mautrix.Client
 var asmuxClient *mautrix.Client
+var asmuxDbPool *pgxpool.Pool
 
 func makeAdminClient() {
 	var err error
@@ -58,11 +61,29 @@ func makeAsmuxClient() {
 	}
 }
 
+func makeAsmuxDbPool() bool {
+	if len(cfg.AsmuxDatabaseURL) > 0 {
+		var err error
+		asmuxDbPool, err = pgxpool.Connect(context.Background(), cfg.AsmuxDatabaseURL)
+		if err != nil {
+			log.Fatalln("Unable to connect to asmux database: %v", err)
+			os.Exit(3)
+		}
+		return true
+	}
+	return false
+}
+
 func main() {
 	readEnv()
 	makeAdminClient()
 	makeAsmuxClient()
 	initQueue()
+
+	didMakePool := makeAsmuxDbPool()
+	if didMakePool {
+		defer asmuxDbPool.Close()
+	}
 
 	var wg sync.WaitGroup
 	wg.Add(3)
