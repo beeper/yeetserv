@@ -82,6 +82,18 @@ var promDeleteSeconds = promauto.NewHistogram(
 		Buckets: []float64{10, 30, 60, 300, 600, 1200, 3600},
 	},
 )
+var promLeaveQueueNextAgeGauge = promauto.NewGauge(
+	prometheus.GaugeOpts{
+		Name: "yeetserv_leave_queue_next_age_seconds",
+		Help: "Current age of the next item in the leave queue in seconds",
+	},
+)
+var promLeaveQueuePostponeDurationGuage = promauto.NewGauge(
+	prometheus.GaugeOpts{
+		Name: "yeetserv_leave_queue_postpone_duration_seconds",
+		Help: "How long yeetserv should wait before leaving a room in seconds",
+	},
+)
 
 func initQueue() {
 	if len(cfg.RedisURL) > 0 {
@@ -110,6 +122,8 @@ func initQueue() {
 		leaveQueue = make(chan *LeavingRoom, 8192)
 		deleteQueue = make(chan id.RoomID, 8192)
 	}
+
+	promLeaveQueuePostponeDurationGuage.Set(cfg.PostponeDeletion.Seconds())
 }
 
 func loopQueueStats(ctx context.Context, wg *sync.WaitGroup) {
@@ -324,7 +338,10 @@ func popDeleteQueue(ctx context.Context) (id.RoomID, bool) {
 		// we only check for due if we get valid json, otherwise it's a legacy plain room id OR requeued error room ID
 		pendingRoom := &PendingRoom{}
 		if err := json.Unmarshal([]byte(nextItem[0]), pendingRoom); err == nil {
-			if time.Since(pendingRoom.QueueTime) < cfg.PostponeDeletion {
+			sinceQueueTime := time.Since(pendingRoom.QueueTime)
+			promLeaveQueueNextAgeGauge.Set(sinceQueueTime.Seconds())
+
+			if sinceQueueTime < cfg.PostponeDeletion {
 				queueLog.Debugfln("Next item from delete queue is due on %v", pendingRoom.QueueTime.Add(cfg.PostponeDeletion))
 				return "", false
 			}
@@ -360,7 +377,7 @@ func waitIfDeletePaused(ctx context.Context) {
 	for {
 		paused, err := rds.Get(ctx, pauseDeleteQueueKey).Result()
 		if err != nil && paused == "" {
-			return;
+			return
 		}
 		queueLog.Debugln("Waiting, deletes currently paused")
 		time.Sleep(10 * time.Second)
