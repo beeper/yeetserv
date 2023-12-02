@@ -25,6 +25,7 @@ type Config struct {
 	QueueSleep         time.Duration
 	TrustForwardHeader bool
 	DryRun             bool
+	ForcePurge         bool
 	RedisURL           string
 	PostponeDeletion   time.Duration
 }
@@ -59,6 +60,7 @@ func readEnv() {
 	cfg.AsmuxASToken = os.Getenv("ASMUX_AS_TOKEN")
 	cfg.TrustForwardHeader = isTruthy(os.Getenv("TRUST_FORWARD_HEADERS"))
 	cfg.DryRun = isTruthy(os.Getenv("DRY_RUN"))
+	cfg.ForcePurge = isTruthy(os.Getenv("FORCE_PURGE"))
 	cfg.RedisURL = os.Getenv("REDIS_URL")
 	if isTruthy(os.Getenv("DEBUG")) {
 		log.DefaultLogger.PrintLevel = log.LevelDebug.Severity

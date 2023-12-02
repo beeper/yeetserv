@@ -19,6 +19,8 @@ A microservice to delete all rooms of a bridge that was shut down.
 * `THREAD_COUNT` - Number of rooms to process simultaneously within each yeet
   request. Defaults to 5.
 * `DRY_RUN` - If true, rooms won't actually be affected.
+* `FORCE_PURGE` - If true, rooms will be purged regardless of whether the host
+  still has users in the room.
 
 ## API
 ### Clean all rooms of a bridge

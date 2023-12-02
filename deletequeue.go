@@ -406,7 +406,7 @@ func consumeDeleteQueue(ctx context.Context) {
 			queueLog.Warnfln("Failed to request asmux to forget about room %s: %v", roomID, err)
 		}
 	}
-	_, err := adminDeleteRoom(ctx, ReqDeleteRoom{RoomID: roomID, Purge: true})
+	_, err := adminDeleteRoom(ctx, ReqDeleteRoom{RoomID: roomID, Purge: true, ForcePurge: cfg.ForcePurge})
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			queueLog.Debugfln("Context was canceled while cleaning up %s, putting it back in the queue", roomID)

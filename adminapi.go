@@ -12,8 +12,9 @@ import (
 )
 
 type ReqDeleteRoom struct {
-	RoomID id.RoomID `json:"-"`
-	Purge  bool      `json:"purge"`
+	RoomID     id.RoomID `json:"-"`
+	Purge      bool      `json:"purge"`
+	ForcePurge bool      `json:"force_purge"`
 }
 
 type RespDeleteRoom struct {
