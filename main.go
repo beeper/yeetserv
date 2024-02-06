@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	log "maunium.net/go/maulogger/v2"
 
@@ -92,6 +92,7 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/_matrix/client/unstable/com.beeper.yeetserv/clean_all", handleCleanAllRooms).Methods(http.MethodPost)
 	router.HandleFunc("/_matrix/client/unstable/com.beeper.yeetserv/queue", handleQueue).Methods(http.MethodPost)
+	router.HandleFunc("/_matrix/client/unstable/com.beeper.yeetserv/admin_clean_rooms", handleAdminCleanRooms).Methods(http.MethodPost)
 	router.Handle("/metrics", promhttp.Handler())
 	server := &http.Server{
 		Addr:    cfg.ListenAddress,

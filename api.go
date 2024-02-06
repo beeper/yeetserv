@@ -112,6 +112,10 @@ type ReqQueueRooms struct {
 	LeaveRoom bool        `json:"leave_room"`
 }
 
+type ReqAdminCleanRooms struct {
+	RoomIDs []id.RoomID `json:"room_ids"`
+}
+
 type RespQueueRooms struct {
 	Queued   []id.RoomID `json:"queued"`
 	Failed   []id.RoomID `json:"failed"`
@@ -156,6 +160,55 @@ func handleQueue(w http.ResponseWriter, r *http.Request) {
 				reqLog.Debugln("Queued", roomID, "for deletion (leave: %v)", req.LeaveRoom)
 				resp.Queued = append(resp.Queued, roomID)
 			}
+		}
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	if len(resp.Queued) > 0 || len(req.RoomIDs) == 0 {
+		w.WriteHeader(http.StatusAccepted)
+	} else if len(resp.Rejected) > 0 {
+		w.WriteHeader(http.StatusForbidden)
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	_ = json.NewEncoder(w).Encode(&resp)
+}
+
+func handleAdminCleanRooms(w http.ResponseWriter, r *http.Request) {
+	ctx, reqLog := prepareRequest(r)
+
+	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if len(token) == 0 {
+		errMissingToken.Write(w)
+		return
+	}
+
+	if token != cfg.AdminAccessToken {
+		errUnknownToken.Write(w)
+		return
+	}
+
+	var req ReqAdminCleanRooms
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if _, ok := err.(*json.SyntaxError); ok {
+		w.Header().Add("Accept", "application/json")
+		errNotJSON.Write(w)
+		return
+	} else if err != nil {
+		errBadJSON.Write(w)
+		return
+	}
+
+	var resp RespQueueRooms
+	for _, roomID := range req.RoomIDs {
+		err = PushDeleteQueue(ctx, roomID)
+
+		if err != nil {
+			resp.Failed = append(resp.Failed, roomID)
+			reqLog.Warnfln("Failed to queue %s for deletion: %v", roomID, err)
+		} else {
+			reqLog.Debugln("Queued", roomID, "for deletion")
+			resp.Queued = append(resp.Queued, roomID)
 		}
 	}
 
